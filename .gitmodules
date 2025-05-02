@@ -1,0 +1,3 @@
+[submodule "go-librespot"]
+	path = go-librespot
+	url = https://github.com/devgianlu/go-librespot
