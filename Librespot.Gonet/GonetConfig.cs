@@ -4,7 +4,7 @@ namespace Librespot.Gonet;
 
 public record GonetConfig
 {
-    public string DeviceName { get; set; } = "Librespot Gonet";
+    public string DeviceName { get; set; } = "Librespot.Gonet";
 
     public DeviceType DeviceType { get; set; } = DeviceType.Computer;
 
