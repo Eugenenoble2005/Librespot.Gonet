@@ -6,6 +6,10 @@ var config = new GonetConfig()
     Credentials = new()
     {
         Type = CredentialType.Interactive,
+    },
+    Server = new()
+    {
+        Port = 3000
     }
 };
 Player player = new(
@@ -14,61 +18,38 @@ Player player = new(
 );
 
 Console.WriteLine("Starting Player ...");
-player.PlayerActive += (_, _) =>
-{
-    Console.WriteLine("PLAYER JUST BECAME ACTIVE");
-};
-player.PlayerInactive += (_, _) =>
-{
-    Console.WriteLine("PLAYER IS INACTIVE");
-};
-player.PlayerMetadata += (_, e) =>
-{
-    Console.WriteLine("Metadata recieved: " + JsonSerializer.Serialize(e));
-};
 
-player.PlayerWillPlay += (_, e) =>
-{
-    Console.WriteLine("Player will play:" + JsonSerializer.Serialize(e));
-};
+_ = player.StartAsync();
 
-player.PlayerPlaying += (_, e) =>
+while (true)
 {
-    Console.WriteLine("player playing:" + JsonSerializer.Serialize(e));
-};
-
-player.PlayerNotPlaying += (_, e) =>
-{
-    Console.WriteLine("player not playing:" + JsonSerializer.Serialize(e));
-};
-
-player.PlayerPaused += (_, e) =>
-{
-    Console.WriteLine("player was paused" + JsonSerializer.Serialize(e));
-};
-
-player.PlayerStopped += (_, e) =>
-{
-    Console.WriteLine("player stopped" + JsonSerializer.Serialize(e));
-};
-player.PlayerSeek += (_, e) =>
-{
-    Console.WriteLine("player seeked" + JsonSerializer.Serialize(e));
-};
-player.PlayerVolume += (_, e) =>
-{
-    Console.WriteLine("player VOLUME" + JsonSerializer.Serialize(e));
-};
-player.PlayerShuffleContext += (_, e) =>
-{
-    Console.WriteLine("player shuffle context" + JsonSerializer.Serialize(e));
-};
-player.PlayerRepeatContext += (_, e) =>
-{
-    Console.WriteLine("player repeat" + JsonSerializer.Serialize(e));
-};
-player.PlayerRepeatTrack += (_, e) =>
-{
-    Console.WriteLine("player repeat track" + JsonSerializer.Serialize(e));
-};
-await player.StartAsync();
+    ConsoleKeyInfo keyinfo = Console.ReadKey(true);
+    switch (keyinfo.Key)
+    {
+        case ConsoleKey.S:
+            Console.WriteLine(JsonSerializer.Serialize(await player.StatusAsync()));
+            break;
+        case ConsoleKey.P:
+            var result = await player.PlayAsync(new()
+            {
+                Uri = "spotify:track:1w7cgGZR86yWz1pA2puVJD" //heated by Beyonce,
+            });
+            Console.WriteLine(result);
+            break;
+        case ConsoleKey.A:
+            Console.WriteLine(await player.SetPauseAsync(false));
+            break;
+        case ConsoleKey.Z:
+            Console.WriteLine(await player.SetPauseAsync(true));
+            break;
+        case ConsoleKey.Spacebar:
+            Console.WriteLine(await player.TogglePlayPauseAsync());
+            break;
+        case ConsoleKey.N:
+            Console.WriteLine(await player.PlayNextAsync(new()));
+            break;
+        case ConsoleKey.B:
+            Console.WriteLine(await player.PlayPrevAsync());
+            break;
+    }
+}
