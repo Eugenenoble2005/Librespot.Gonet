@@ -50,6 +50,7 @@ public class Player(GonetConfig Config, string? ConfigPath = null)
         _daemonProcess.BeginOutputReadLine();
         _daemonProcess.BeginErrorReadLine();
         _daemonProcess.OutputDataReceived += (s, e) => LibrespotReceievedData?.Invoke(s, e);
+        _daemonProcess.EnableRaisingEvents = true;
         _daemonProcess.ErrorDataReceived += (s, e) =>
         {
             LibrespotReceievedError?.Invoke(s, e);
@@ -69,8 +70,27 @@ public class Player(GonetConfig Config, string? ConfigPath = null)
                 _ = HandleWebSocketEvents();
             }
         };
+        _daemonProcess.Exited += async (s, e) =>
+        {
+            DaemonExited?.Invoke(s, e);
+            await CloseAsync();
+        };
         await _daemonProcess.WaitForExitAsync();
     }
+
+    public async Task CloseAsync()
+    {
+        //close and clean up
+        _daemonProcess.Kill();
+        if (_ws.State == WebSocketState.Open)
+        {
+            await _ws.CloseAsync(WebSocketCloseStatus.NormalClosure, "closing", CancellationToken.None);
+        }
+        _ws.Dispose();
+        _httpClient.CancelPendingRequests();
+        _httpClient.Dispose();
+    }
+
     private async Task HandleWebSocketEvents()
     {
         try
@@ -212,6 +232,70 @@ public class Player(GonetConfig Config, string? ConfigPath = null)
         return request.IsSuccessStatusCode;
     }
 
+    public async Task<bool> SeekAsync(SeekCommandArgs args)
+    {
+        var content = new StringContent(JsonSerializer.Serialize(args), Encoding.UTF8, "application/json");
+        var request = await _httpClient.PostAsync(_baseHttpEndpoint + "/player/seek", content);
+        return request.IsSuccessStatusCode;
+    }
+
+    public async Task<PlayerVolume?> GetVolumeAsync()
+    {
+        var request = await (await _httpClient.GetAsync(_baseHttpEndpoint + "/player/volume")).Content.ReadAsStringAsync();
+        return JsonSerializer.Deserialize<PlayerVolume>(request);
+    }
+
+    public async Task<bool> SetPlayerVolumeAsync(SetVolumeCommandArgs args)
+    {
+        var content = new StringContent(JsonSerializer.Serialize(args), Encoding.UTF8, "application/json");
+        var request = await _httpClient.PostAsync(_baseHttpEndpoint + "/player/volume", content);
+        return request.IsSuccessStatusCode;
+    }
+
+    public async Task<bool> SetRepeatContextAsync(bool repeatContext)
+    {
+        var args = new
+        {
+            repeat_context = repeatContext
+        };
+        var content = new StringContent(JsonSerializer.Serialize(args), Encoding.UTF8, "application/json");
+        var request = await _httpClient.PostAsync(_baseHttpEndpoint + "/player/repeat_context", content);
+        return request.IsSuccessStatusCode;
+    }
+
+    public async Task<bool> SetRepeatTrackAsync(bool repeatTrack)
+    {
+        var args = new
+        {
+            repeat_track = repeatTrack
+        };
+        var content = new StringContent(JsonSerializer.Serialize(args), Encoding.UTF8, "application/json");
+        var request = await _httpClient.PostAsync(_baseHttpEndpoint + "/player/repeat_track", content);
+        return request.IsSuccessStatusCode;
+    }
+
+    public async Task<bool> SetShuffleContext(bool shuffleContext)
+    {
+        var args = new
+        {
+            shuffle_context = shuffleContext
+        };
+        var content = new StringContent(JsonSerializer.Serialize(args), Encoding.UTF8, "application/json");
+        var request = await _httpClient.PostAsync(_baseHttpEndpoint + "/player/shuffle_context", content);
+        return request.IsSuccessStatusCode;
+    }
+
+    public async Task<bool> AddToQueueAsync(string uri)
+    {
+        var args = new
+        {
+            uri = uri
+        };
+        var content = new StringContent(JsonSerializer.Serialize(args), Encoding.UTF8, "application/json");
+        var request = await _httpClient.PostAsync(_baseHttpEndpoint + "/player/add_to_queue", content);
+        return request.IsSuccessStatusCode;
+    }
+
     public event DataReceivedEventHandler? LibrespotReceievedData;
     public event DataReceivedEventHandler? LibrespotReceievedError;
     public event InteractiveAuthenticationRequestedEventHandler? InteractiveAuthenticationRequested;
@@ -229,6 +313,7 @@ public class Player(GonetConfig Config, string? ConfigPath = null)
     public event PlayerShuffleContextEventHandler? PlayerShuffleContext;
     public event PlayerRepeatContextEventHandler? PlayerRepeatContext;
     public event PlayerRepeatTrackEventHandler? PlayerRepeatTrack;
+    public event EventHandler? DaemonExited;
 }
 
 public class PlayerStatus
@@ -325,4 +410,29 @@ public record PlayNextCommandArgs
 {
     [JsonPropertyName("uri")]
     public string? Uri { get; set; }
+}
+
+public record SeekCommandArgs
+{
+    [JsonPropertyName("position")]
+    public required long Position { get; set; }
+
+    [JsonPropertyName("relative")]
+    public bool Relative { get; set; } = false;
+}
+public record PlayerVolume
+{
+    [JsonPropertyName("value")]
+    public int Value { get; set; }
+
+    [JsonPropertyName("max")]
+    public int Max { get; set; }
+}
+public record SetVolumeCommandArgs
+{
+    [JsonPropertyName("volume")]
+    public required int Volume { get; set; }
+
+    [JsonPropertyName("relative")]
+    public bool Relative { get; set; } = false;
 }
