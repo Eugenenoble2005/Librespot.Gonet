@@ -5,14 +5,12 @@ namespace Librespot.Gonet;
 public record GonetConfig
 {
     public string DeviceName { get; set; } = "Librespot.Gonet";
-
+    public bool ZeroconfEnabled { get; set; } = true;
     public DeviceType DeviceType { get; set; } = DeviceType.Computer;
-
     public string? ClientToken { get; set; }
-
     public AudioBackend AudioBackend { get; set; } = AudioBackend.Alsa;
-
     public GonetCredentials? Credentials { get; set; }
+    public ApiServer Server { get; set; } = new();
 }
 
 public record GonetCredentials
@@ -21,6 +19,12 @@ public record GonetCredentials
     public CredentialTypeInteractive? Interactive { get; set; }
     public CredentialTypeSpotifyToken? SpotifyToken { get; set; }
     public CredentialTypeZeroconf? Zeroconf { get; set; }
+}
+public record ApiServer
+{
+    public bool Enabled { get; set; } = true;
+    public string Address { get; set; } = "localhost";
+    public int Port { get; set; } = 0;
 }
 
 public enum CredentialType
